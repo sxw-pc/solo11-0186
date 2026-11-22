@@ -64,6 +64,8 @@ def business_records(event):
     else:
         add("作业许可", f"{base}:permit", {"job_id": event["job_id"],
                                       "actions": event.get("permit_actions", [])})
+        for i, item in enumerate(event.get("landing_sites", [])):
+            add("应急落点", f"{base}:site:{i}", item)
         for i, item in enumerate(event.get("wind_samples", [])):
             add("风速观测", f"{base}:wind:{i}", item)
         for i, item in enumerate(event.get("hook_events", [])):

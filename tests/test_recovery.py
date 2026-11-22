@@ -46,7 +46,7 @@ class RecoveryTests(unittest.TestCase):
     def test_bad_then_recovered_three_ledger_path(self):
         self.normal()
         self.bad()
-        self.assertEqual(self.decision('悬吊物应急落地'), '应急落地')
+        self.assertEqual(self.decision('悬吊物应急落地'), '应急落地:LS1')
         for kind in KINDS:
             self.load(kind, f'{kind}-recover.json')
         self.assertEqual(self.decision('现场风速停复工'), '放行')

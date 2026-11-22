@@ -184,7 +184,7 @@ class BusinessTests(unittest.TestCase):
         self.normal()
         self.load('work', 'work-bad.json')
         self.assertEqual(self.decision('现场风速停复工'), '停工')
-        self.assertEqual(self.decision('悬吊物应急落地'), '应急落地')
+        self.assertEqual(self.decision('悬吊物应急落地'), '应急落地:LS1')
 
     def test_single_prestart_wind_source_cannot_authorize_release(self):
         self.normal()
@@ -232,7 +232,7 @@ class BusinessTests(unittest.TestCase):
         altered.update(id='A2', version=2)
         altered['crane']['faults'] = [{'at': '2026-12-01T09:16', 'reason': 'brake'}]
         self.import_event(altered)
-        self.assertEqual(self.decision('悬吊物应急落地'), '应急落地')
+        self.assertEqual(self.decision('悬吊物应急落地'), '应急落地:LS1')
 
     def test_scrapped_sling_while_lifted_creates_landing_duty(self):
         self.normal()
@@ -246,7 +246,15 @@ class BusinessTests(unittest.TestCase):
         altered['slings'][0]['status'] = 'scrapped'
         self.import_event(altered)
         self.assertEqual(self.decision('索具组合适配'), '失配')
-        self.assertEqual(self.decision('悬吊物应急落地'), '应急落地')
+        self.assertEqual(self.decision('悬吊物应急落地'), '应急落地:LS1')
+
+    def test_no_capacity_or_safe_geometry_blocks_emergency_landing(self):
+        self.normal()
+        altered = copy.deepcopy(sample('work-bad.json'))
+        altered.update(id='W2-no-site', version=2)
+        altered['landing_sites'][0]['capacity_kg'] = 500
+        self.import_event(altered)
+        self.assertEqual(self.decision('悬吊物应急落地'), '无安全落点')
 
     def test_identical_file_replay_and_collision_rollback(self):
         first = self.load('plan', 'plan-ok.json')

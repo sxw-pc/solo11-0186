@@ -6,6 +6,26 @@
     "version": 3,
     "effective_at": "2026-12-01T10:10",
     "wind_limit_mps": 10,
+    "landing_sites": [
+      {
+        "id": "LS1",
+        "point": [
+          0,
+          -2
+        ],
+        "capacity_kg": 2000,
+        "available_until": "2026-12-31T23:59"
+      },
+      {
+        "id": "LS2",
+        "point": [
+          5.5,
+          5.5
+        ],
+        "capacity_kg": 2500,
+        "available_until": "2026-12-31T23:59"
+      }
+    ],
     "wind_samples": [
       {
         "id": "G1",
