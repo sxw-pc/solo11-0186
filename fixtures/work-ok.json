@@ -1,0 +1,15 @@
+[
+  {
+    "id": "W1",
+    "kind": "work",
+    "job_id": "J1",
+    "wind_mps": 5,
+    "wind_limit_mps": 10,
+    "wind_calibrated": true,
+    "hooked": true,
+    "lifted": true,
+    "landed": true,
+    "witnessed": true,
+    "version": 1
+  }
+]

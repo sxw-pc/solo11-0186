@@ -1,0 +1,15 @@
+[
+  {
+    "id": "A1",
+    "kind": "asset",
+    "job_id": "J1",
+    "inspection_valid": true,
+    "rated_moment": 10000,
+    "rigging_valid": true,
+    "rigging_capacity_kg": 1500,
+    "staff_valid": true,
+    "staff_conflict": false,
+    "reserved_elsewhere": false,
+    "version": 1
+  }
+]

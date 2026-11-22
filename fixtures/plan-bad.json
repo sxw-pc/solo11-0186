@@ -1,0 +1,13 @@
+[
+  {
+    "id": "P2",
+    "kind": "plan",
+    "job_id": "J1",
+    "measured_kg": 1800,
+    "radius_m": 8,
+    "center_ok": false,
+    "route_clear": false,
+    "signed": false,
+    "version": 2
+  }
+]
