@@ -1,0 +1,67 @@
+[
+  {
+    "id": "P2",
+    "kind": "plan",
+    "job_id": "J1",
+    "version": 2,
+    "effective_at": "2026-12-01T08:30",
+    "window_start": "2026-12-01T09:00",
+    "window_end": "2026-12-01T10:00",
+    "radius_m": 8,
+    "boom_m": 20,
+    "measurements": [
+      {
+        "id": "M0",
+        "type": "estimate",
+        "kg": 900,
+        "at": "2026-11-30T15:00",
+        "witness": "planner"
+      },
+      {
+        "id": "M2",
+        "type": "independent",
+        "kg": 1600,
+        "at": "2026-12-01T08:20",
+        "witness": "surveyor"
+      }
+    ],
+    "center": [
+      0,
+      0
+    ],
+    "hook_points": [
+      [
+        -1,
+        -1
+      ],
+      [
+        1,
+        1
+      ]
+    ],
+    "route": [
+      [
+        0,
+        0
+      ],
+      [
+        5.5,
+        5.5
+      ]
+    ],
+    "zones": [
+      {
+        "rect": [
+          5,
+          5,
+          6,
+          6
+        ],
+        "start": "2026-12-01T08:00",
+        "end": "2026-12-01T11:00"
+      }
+    ],
+    "signed_version": 1,
+    "revoked": false
+  }
+]
