@@ -1,0 +1,78 @@
+[
+  {
+    "type": "capture",
+    "at": "2026-12-01T07:30",
+    "ticket_no": "WB-1700",
+    "copy": "first",
+    "truck_qr": "TR-8",
+    "plate": "沪A-TR8",
+    "image_name": "tr8-copy-1.png",
+    "gross": 5700,
+    "tare": 4000,
+    "net": 1700,
+    "unit": "kg",
+    "scale_calibrated_until": "2026-12-31T23:59",
+    "weighed_at": "2026-12-01T07:20",
+    "pallet_seals": [
+      "seal-2"
+    ],
+    "unload_records": [
+      {
+        "truck_qr": "TR-8",
+        "pieces": 2
+      }
+    ],
+    "witness": {
+      "id": "gate-1",
+      "signature": "sig-gate-1"
+    },
+    "ocr": [
+      {
+        "gross": 5700,
+        "tare": 4000,
+        "net": 1700,
+        "unit": "kg",
+        "confidence": 0.99
+      }
+    ],
+    "image_base64": "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAUElEQVR4nGMIdzW2crZ3ymFwN7VxdXTJi2Ewt3N3diuI82Fw8HT1KErwC2XwdvcqSQoIT2Dw9ClLCYpMimPwq0gLiU5JSGaoygiLTUtK7QcAwtEVVrBTD+IAAAAASUVORK5CYII="
+  },
+  {
+    "type": "capture",
+    "at": "2026-12-01T07:40",
+    "ticket_no": "WB-1300",
+    "copy": "second",
+    "truck_qr": "TR-8",
+    "plate": "沪A-TR8",
+    "image_name": "tr8-copy-2.png",
+    "gross": 5300,
+    "tare": 4000,
+    "net": 1300,
+    "unit": "kg",
+    "scale_calibrated_until": "2026-12-31T23:59",
+    "weighed_at": "2026-12-01T07:35",
+    "pallet_seals": [
+      "seal-1"
+    ],
+    "unload_records": [
+      {
+        "truck_qr": "TR-8",
+        "pieces": 2
+      }
+    ],
+    "witness": {
+      "id": "gate-1",
+      "signature": "sig-gate-1"
+    },
+    "ocr": [
+      {
+        "gross": 5300,
+        "tare": 4000,
+        "net": 1300,
+        "unit": "kg",
+        "confidence": 0.98
+      }
+    ],
+    "image_base64": "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAUElEQVR4nGMIdzW2srd3ymFwN7VxdHTJi2Ewt3N2diuI82FwcHX1KErwC2Vwd/cqSQoIj2Hw9ClLCYqMi2Pwq0gLiU5ISGaoygiLTUpK7QcAvdUVMk1gPbYAAAAASUVORK5CYII="
+  }
+]

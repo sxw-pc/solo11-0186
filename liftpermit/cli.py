@@ -4,16 +4,20 @@ from pathlib import Path
 from . import __file__ as module_file
 from .store import connect,import_file,report,audit
 
-IMPORTS={'plan-import': 'plan', 'asset-import': 'asset', 'work-import': 'work'}
+IMPORTS={'plan-import': 'plan', 'asset-import': 'asset', 'work-import': 'work',
+         'ticket-import': 'ticket'}
 def main(argv=None):
     parser=argparse.ArgumentParser(prog='liftpermit')
     parser.add_argument('command',choices=list(IMPORTS)+['demo','report','audit'])
     parser.add_argument('--db',default='state.sqlite')
     parser.add_argument('--file')
+    parser.add_argument('--archive',help='离线票图内容寻址归档目录（ticket-import 必需）')
     args=parser.parse_args(argv)
-    db=connect(args.db)
+    db=connect(args.db,archive_dir=args.archive)
     if args.command in IMPORTS:
         if not args.file: parser.error('--file required')
+        if args.command=='ticket-import' and not args.archive:
+            parser.error('ticket-import requires --archive')
         result=import_file(db,IMPORTS[args.command],args.file)
     elif args.command=='demo':
         root=Path(__file__).resolve().parents[1]/'fixtures'

@@ -86,6 +86,20 @@ def evaluate(events, plans, resources):
                        and resume[-1]["plan_version"] == permit_version)
         wind_ok = calibrated and (not high_at or resumed)
         source_ready = bool(plan and plan["ready"] and asset and asset["ready"])
+        # 停工必须留得下可追溯的原因链：方案版本/票归属、资源冻结、风速各自独立报。
+        hold_reasons = []
+        if not plan or not plan["ready"]:
+            hold_reasons.append("plan_not_ready" if plan else "missing_plan")
+            if plan and plan.get("pending_ticket_attribution"):
+                hold_reasons.append("ticket_attribution_pending")
+        if asset and not asset["ready"]:
+            hold_reasons.append("resources_frozen")
+            hold_reasons.extend(r for r in asset.get("freeze_reasons", [])
+                                if r not in hold_reasons)
+        if not wind_ok:
+            hold_reasons.append("wind_stop_or_not_resumed")
+        if not released:
+            hold_reasons.append("permit_not_released_for_version")
         active = source_ready and released and wind_ok and not hooks["lifted"]
         emergency = hooks["lifted"] and (wind_stopped or not source_ready)
         landing_site = _safe_landing_site(event, plan) if emergency else None
@@ -102,7 +116,7 @@ def evaluate(events, plans, resources):
             "event": event, "status": status, "active": active, "completed": completed,
             "wind_stopped": wind_stopped, "wind_resumed": resumed,
             "hook_state": hooks, "emergency_landing": emergency,
-            "landing_site": landing_site,
+            "landing_site": landing_site, "hold_reasons": hold_reasons,
             "decisions": {
                 "现场风速停复工": ("放行" if active or completed else "停工", "双源连续校准风速、复工许可与当前方案版本"),
                 "起落钩闭环核验": ("完工" if completed else "悬停或待核", "四阶段时序及独立签收"),

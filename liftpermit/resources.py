@@ -32,16 +32,17 @@ def evaluate(events, plans):
                   if p["radius_m"] >= radius and p["boom_m"] >= boom]
         point = sorted(points, key=lambda p: (p["radius_m"], p["boom_m"], p["max_kg"]))[0] if points else None
         rated = point["max_kg"] if point else 0
+        dynamic_kg = mass * 1.1
         inspection_ok = (crane["inspected_until"] >= end and crane.get("status") == "good"
                          and not any(start <= x["at"] <= end for x in crane.get("faults", [])))
-        crane_ok = bool(plan and mass > 0 and inspection_ok and rated >= mass * 1.1)
+        crane_ok = bool(plan and mass > 0 and inspection_ok and rated >= dynamic_kg)
         slings = asset.get("slings", [])
         angle_loads = [s["capacity_kg"] * math.cos(math.radians(s["angle_deg"])) for s in slings]
         sling_count = len(plan["event"].get("hook_points", [])) if plan else 0
         sling_ok = (bool(plan and slings and len(slings) == sling_count)
                     and all(s["inspected_until"] >= end and s.get("status") == "good"
                             and 0 <= s["angle_deg"] < 80 for s in slings)
-                    and all(load >= mass * 1.1 / sling_count for load in angle_loads))
+                    and all(load >= dynamic_kg / sling_count for load in angle_loads))
         commander = asset["commander"]
         staff_ok = (commander["cert_until"] >= end
                     and _covers(start, end, commander.get("shifts", [])))
@@ -51,13 +52,32 @@ def evaluate(events, plans):
         conflict = bool(overlap)
         reservation = asset.get("reservation_status", "available")
         reserved = reservation == "reserved"
-        ready = bool(plan and crane_ok and sling_ok and staff_ok and not conflict and reserved)
+        ready = bool(plan and plan["ready"] and crane_ok and sling_ok
+                     and staff_ok and not conflict and reserved)
+        # 冻结须可解释：票归属待核直接视为方案未就绪，不允许拿“最新票”硬放行。
+        freeze_reasons = []
+        if not plan or not plan["ready"]:
+            freeze_reasons.append("plan_not_ready" if plan else "missing_plan")
+            if plan and plan.get("pending_ticket_attribution"):
+                freeze_reasons.append("ticket_attribution_pending")
+        if plan and not crane_ok:
+            freeze_reasons.append("crane_rating_or_inspection")
+        if plan and not sling_ok:
+            freeze_reasons.append("sling_mismatch")
+        if not staff_ok:
+            freeze_reasons.append("staff_gap")
+        if conflict:
+            freeze_reasons.append("reservation_conflict")
+        if not reserved:
+            freeze_reasons.append("reservation_not_held")
         status = ("fault" if crane.get("faults") or any(s.get("status") == "scrapped" for s in slings) else
                   "released" if reservation == "released" else
                   "reserved" if ready else "frozen")
         result[job] = {
             "event": asset, "ready": ready, "status": status,
-            "rated_kg": rated, "crane_ok": crane_ok, "sling_ok": sling_ok,
+            "rated_kg": rated, "dynamic_demand_kg": dynamic_kg,
+            "freeze_reasons": freeze_reasons,
+            "crane_ok": crane_ok, "sling_ok": sling_ok,
             "staff_ok": staff_ok, "reservation_conflict": conflict,
             "decisions": {
                 "塔机额定载荷复核": ("合格" if crane_ok else "超限或检验失效", "半径/臂长曲线、动态载荷与检验时窗"),

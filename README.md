@@ -12,7 +12,17 @@ python -m liftpermit audit --db demo.sqlite
 python -m unittest discover -s tests -v
 ```
 
-独立入口：plan-import、asset-import、work-import。每项导入格式为 `--db state.sqlite --file fixtures/<name>.json`。同源重复幂等，异内容复用事件 ID 则整批回滚。`audit` 在空库重放原始文件并比对业务状态。
+独立入口：plan-import、asset-import、work-import、ticket-import。每项导入格式为 `--db state.sqlite --file fixtures/<name>.json`；门岗磅单另需 `--archive <图像归档目录>`。同源重复幂等，异内容复用事件 ID 则整批回滚。`audit` 在空库重放原始文件并比对业务状态。
+
+## 门岗离线双联磅单（ticket-import）
+
+`ticket-import` 接收本地合成图像或可测试 OCR token、磅房原始字节、车次二维码、毛/皮/净重、计量单位、设备校准、过磅时刻、托盘封签、拆车记录和见证签字。票图先按 sha256 内容寻址落盘归档，再写 SQLite 事件；图像不是数据库事务的一部分，归档失败没有任何数据库写入，事务失败时图像保留、重跑命中同一归档并重建出同一业务结论。
+
+只增不改的票域事件链：`capture`（采录，含 OCR 候选与人工修订位）、`ocr_rerun`（同图重跑 OCR）、`manual_revision`（人工改字，逐字段留痕）、`correction`（磅房更正）、`attribution`（实体归属证据）。净重必须满足毛重减皮重，单位统一归一到千克（吨自动乘 1000，未知单位拒绝而非静默换算），设备校准须覆盖过磅时刻；同图不同 OCR 结果未经人工裁决时挂 `ocr_conflict` 待核。
+
+车次二维码只指向车次：`evaluate` 按车次聚合票联并显式列出未匹配票，**绝不**把“截止窗口前最新一联”直接写成构件的 independent measurement。只有两类完整取证能建立票到构件的实体归属：封签台账把托盘封签绑定构件（`seal_ledger`，破损封签须显式被事后更正取代），或独立监理现场复磅签字（`reweigh`）。两类证据重量冲突时保持 `conflict` 待核；仅有车次 QR 时全部待核。
+
+`promotion` 指令把已归属证据推广为一版新方案事件：旧独立测量标记 `revoked` 并保留 provenance 链，新测量带票/图像/见证人证据，方案签认停留在旧版本号，资源账因方案未就绪冻结、现场停工；`countersign` 独立复签产生再下一版方案号，之后仍需针对新版本的 work 许可动作才能完工。旧 JSON 从不被覆盖，旧许可无法在新版本下悄悄保持完工。`fixtures/ticket-collision.json` 是固定合成票 TR-8（两联净重 1700kg 与 1300kg，票面无构件号）。
 
 ## 三套业务账与证据
 
