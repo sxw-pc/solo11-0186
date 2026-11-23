@@ -4,12 +4,12 @@ from __future__ import annotations
 from . import plans, resources, work
 
 
-def calculate(events):
+def calculate(events, db=None):
     plan_events = [e for e in events if e["kind"] == "plan"]
     asset_events = [e for e in events if e["kind"] == "asset"]
     work_events = [e for e in events if e["kind"] == "work"]
     p = plans.evaluate(plan_events)
-    a = resources.evaluate(asset_events, p)
+    a = resources.evaluate(asset_events, p, db)
     w = work.evaluate(work_events, p, a)
     decisions, states = {}, []
     for subsystem, accounts in [

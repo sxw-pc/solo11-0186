@@ -1,0 +1,83 @@
+{
+  "portal_id": "mock-vendor-tc1",
+  "signing_key": "offline-mock-vendor-key",
+  "documents": {
+    "TC1-rating": {
+      "current_revision": "V2",
+      "required_coverage": [[8, 20], [10, 25]],
+      "revisions": {
+        "V1": {
+          "archive": {
+            "archive_id": "TC1-rating-2026-11",
+            "issued_at": "2026-11-01T00:00:00"
+          },
+          "pages": [
+            {"page_no": 1, "rows": [
+              {"radius_m": 8, "boom_m": 20, "max_kg": 1600},
+              {"radius_m": 9, "boom_m": 22, "max_kg": 1500}
+            ]},
+            {"page_no": 2, "rows": [
+              {"radius_m": 10, "boom_m": 25, "max_kg": 1400}
+            ]}
+          ]
+        },
+        "V2": {
+          "lease": {"ttl_seconds": 900},
+          "pages": [
+            {"page_no": 1, "rows": [
+              {"radius_m": 8, "boom_m": 20, "max_kg": 1200}
+            ]},
+            {"page_no": 2, "rows": [
+              {"radius_m": 10, "boom_m": 25, "max_kg": 1300}
+            ]}
+          ]
+        }
+      }
+    }
+  },
+  "scenarios": {
+    "out_of_order_duplicate": {
+      "duplicate_pages": {"V2/1": 1}
+    },
+    "transient_timeout": {
+      "page_faults": {"V2/1": [{"kind": "timeout"}]}
+    },
+    "transient_503": {
+      "page_faults": {"V2/2": [{"kind": "http_503"}, {"kind": "http_503"}]}
+    },
+    "persistent_503": {
+      "page_faults": {"V2/2": [{"kind": "http_503"}, {"kind": "http_503"},
+                               {"kind": "http_503"}, {"kind": "http_503"},
+                               {"kind": "http_503"}, {"kind": "http_503"},
+                               {"kind": "http_503"}, {"kind": "http_503"},
+                               {"kind": "http_503"}, {"kind": "http_503"},
+                               {"kind": "http_503"}, {"kind": "http_503"},
+                               {"kind": "http_503"}, {"kind": "http_503"},
+                               {"kind": "http_503"}, {"kind": "http_503"}]}
+    },
+    "page_gone": {
+      "page_faults": {"V2/2": [{"kind": "gone"}]}
+    },
+    "stale_etag_cache": {
+      "stale_304": true
+    },
+    "tamper_page": {
+      "tamper_pages": ["V2/2"]
+    },
+    "grow_to_three_pages": {
+      "discovery_pages": {"TC1-rating": [3]}
+    },
+    "lease_expires_midscan": {
+      "tick_seconds_per_fetch": 700,
+      "lease_ttl_seconds": 1200
+    },
+    "flip_to_v1_midscan": {
+      "flip_after_fetches": 1,
+      "flip_to": "V1"
+    },
+    "flip_after_two_fetches": {
+      "flip_after_fetches": 2,
+      "flip_to": "V1"
+    }
+  }
+}

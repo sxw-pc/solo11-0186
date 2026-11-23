@@ -95,14 +95,27 @@ def evaluate(events, plans, resources):
                               and min(hook_times) >= gate_at
                               and max(hook_times) <= plan["event"]["window_end"])
         completed = active and hooks["completed"] and hook_in_window
+        # A work record whose plan/asset gate is not release-ready must not
+        # report a clean ``pending``: name the blocking ledger explicitly so
+        # a half-table rating curve is reported as an unverified curve.
+        if asset and not asset.get("release_allowed", True):
+            blocked_state = "unverified"
+        elif plan and not plan.get("ready"):
+            blocked_state = "plan_not_ready"
+        elif asset and not asset.get("ready"):
+            blocked_state = "resources_not_ready"
+        else:
+            blocked_state = None
         status = ("finished" if completed else "emergency_landing" if emergency else
                   "suspended" if hooks["lifted"] else "paused" if wind_stopped else
-                  "resumed" if resumed and active else "released" if active else "pending")
+                  "resumed" if resumed and active else "released" if active else
+                  "pending")
         result[job] = {
             "event": event, "status": status, "active": active, "completed": completed,
             "wind_stopped": wind_stopped, "wind_resumed": resumed,
             "hook_state": hooks, "emergency_landing": emergency,
             "landing_site": landing_site,
+            "blocked_by": blocked_state,
             "decisions": {
                 "现场风速停复工": ("放行" if active or completed else "停工", "双源连续校准风速、复工许可与当前方案版本"),
                 "起落钩闭环核验": ("完工" if completed else "悬停或待核", "四阶段时序及独立签收"),
