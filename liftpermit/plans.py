@@ -91,6 +91,12 @@ def evaluate(events):
             "event": event, "version_conflict": conflict, "mass_kg": mass,
             "mass_event": measured["id"] if measured else None, "moment_kgm": mass * event["radius_m"],
             "center_ok": center_ok, "route_clear": clear, "signed": signed,
+            "signed_version": event.get("signed_version"), "revoked": bool(event.get("revoked", False)),
+            "version_identity": {
+                "job_id": job, "plan_event_id": event["id"], "plan_version": int(event["version"]),
+                "signed_version": event.get("signed_version"),
+                "revoked": bool(event.get("revoked", False)), "version_conflict": conflict,
+            },
             "ready": ready, "status": "signed" if ready else "revision_conflict" if conflict else "pending_revision",
             "decisions": {
                 "吊物重量版本核定": ("有效" if mass > 0 and not conflict else "待复测", "独立复测重量版本及力矩"),

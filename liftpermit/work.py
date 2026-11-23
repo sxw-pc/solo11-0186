@@ -79,8 +79,10 @@ def evaluate(events, plans, resources):
         actions = sorted(event.get("permit_actions", []), key=lambda x: (x["at"], x["id"]))
         release = [a for a in actions if a["action"] == "release"]
         resume = [a for a in actions if a["action"] == "resume"]
-        permit_version = plan["event"]["version"] if plan else None
-        released = bool(release and plan and release[-1]["plan_version"] == permit_version)
+        # 许可只能绑定当前仍签认有效的方案版本；方案改版/撤回后既有许可自动失格
+        permit_version = plan["event"]["version"] if (plan and plan["signed"]) else None
+        released = bool(release and plan and plan["signed"]
+                        and release[-1]["plan_version"] == permit_version)
         wind_stopped = bool(high_at and not clear_at)
         resumed = bool(high_at and clear_at and resume and resume[-1]["at"] >= clear_at
                        and resume[-1]["plan_version"] == permit_version)
@@ -103,6 +105,15 @@ def evaluate(events, plans, resources):
             "wind_stopped": wind_stopped, "wind_resumed": resumed,
             "hook_state": hooks, "emergency_landing": emergency,
             "landing_site": landing_site,
+            "permit_version": permit_version,
+            "released": released,
+            "version_identity": {
+                "job_id": job, "work_event_id": event["id"], "work_version": int(event["version"]),
+                "permit_version": permit_version, "released": released,
+                "plan_event_id": plan["event"]["id"] if plan else None,
+                "plan_version": plan["event"]["version"] if plan else None,
+                "plan_signed": bool(plan and plan["signed"]),
+            },
             "decisions": {
                 "现场风速停复工": ("放行" if active or completed else "停工", "双源连续校准风速、复工许可与当前方案版本"),
                 "起落钩闭环核验": ("完工" if completed else "悬停或待核", "四阶段时序及独立签收"),

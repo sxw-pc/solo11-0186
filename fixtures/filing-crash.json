@@ -1,0 +1,78 @@
+{
+  "scenario": "filing-crash",
+  "description": "门户已生成 R77 并签章、采录端在写本地回执前崩溃；随后 plan-bad 导入使现行方案变为 v2，旧签认不可沿用。两路备案（逐件/夜间批量）在此同一崩溃点上的对账时序。",
+  "job_id": "J1",
+  "imports": [
+    {"kind": "plan", "fixture": "plan-ok.json"},
+    {"kind": "asset", "fixture": "asset-ok.json"},
+    {"kind": "work", "fixture": "work-ok.json"}
+  ],
+  "post_crash_import": {"kind": "plan", "fixture": "plan-bad.json"},
+  "regulatory": {
+    "project_name": "临江仓储二期吊装工程",
+    "contractor_name": "虚构建工集团有限公司",
+    "site_code": "SITE-DEMO-01",
+    "crane_id": "TC1",
+    "commander_id": "Q1",
+    "monitor_id": "monitor-1",
+    "window_start": "2026-12-01T09:00",
+    "window_end": "2026-12-01T10:00",
+    "filing_clerk": "夜班值守员",
+    "contact_phone": "000-0000-0000",
+    "case_number": "AJ-2026-1201-J1",
+    "filing_purpose": "吊装完工备案"
+  },
+  "timeline": {
+    "t1": "三账导入完成：J1 方案 v1（P1 签认 v1），完工裁定为 finished/完工",
+    "t2": "客户端持久化 v1 提交意图与门户操作键，发送 v1 备案",
+    "t3": "门户生成逐件回执 R77 并签章；客户端在本地写入回执前故障（本地停留 已提交待回执）",
+    "t4": "导入 plan-bad.json：现行方案变为 v2（P2），签认仍停在 v1，方案签认撤回；work 既有许可不再代表当前 v2",
+    "t5": "恢复：凭持久化操作键向门户查询，对回 R77，确认的是 v1 备案而非 v2",
+    "t6": "v2 另生成新提交意图；按门户撤回协议撤回 R77，旧意图标 旧版已撤回，R77 不得重用为 v2 证明"
+  },
+  "item_route": {
+    "first_receipt_id": "R77",
+    "expected_after_recovery": "已确认",
+    "expected_snapshot_version_contains": "plan=P1/v1",
+    "withdrawal": {
+      "receipt": "R77",
+      "old_intent_status": "旧版已撤回",
+      "new_intent_snapshot_contains": "plan=P2/v2"
+    },
+    "invariants": [
+      "R77 的 content_digest 必须与 v1 冻结备案包一致，永远不能标成 v2 的备案证明",
+      "重放只发送持久化的原请求字节，不能用当前 report 重建载荷",
+      "重复点击同一 v1 快照不产生第二个有效门户回执",
+      "撤回前必须先对账确认门户承诺；撤回关系与撤回回执本地留痕"
+    ]
+  },
+  "batch_route": {
+    "batch_receipt_id": "B5",
+    "second_job": {"job_id": "J2", "failure_item_key": "J2"},
+    "expected_sealed_status": "批次已收逐件待核",
+    "expected_after_expansion": {
+      "J1": "已确认",
+      "J2": "冲突待核"
+    },
+    "invariants": [
+      "B5 只是批次回执，逐件展开回执到达前不得宣布 J1 已逐件确认",
+      "批次中 J2 失败不能据 B5 推断 J1 必然失败或成功，逐件独立判定",
+      "J1 逐件回执的 content_digest 与其冻结快照一一对应"
+    ]
+  },
+  "fault_scripts": {
+    "submit_timeout": "submit_timeout:<idempotency_key>",
+    "receipt_unavailable": "receipt_unavailable:<receipt_id>",
+    "list_delay": "list_delay",
+    "withdraw_timeout": "withdraw_timeout:<receipt_id>",
+    "batch_item_fail": "batch_item_fail:<item_key>",
+    "batch_expand_pending": "batch_expand_pending:<batch_id>"
+  },
+  "ledger_statuses": [
+    "已提交待回执",
+    "已确认",
+    "冲突待核",
+    "旧版已撤回",
+    "批次已收逐件待核"
+  ]
+}
