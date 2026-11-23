@@ -1,0 +1,182 @@
+[
+  {
+    "id": "CAP-J7-1",
+    "kind": "sling_capture",
+    "job_id": "J7",
+    "version": 1,
+    "capture_id": "CAP-J7-1",
+    "plan_version": 1,
+    "geometry_sha": "8f6fcaf80ef79e9a",
+    "captured_at": "2026-12-01T09:11",
+    "signature": "sig:supervisor-j7",
+    "alignment": {
+      "tolerance_s": 30
+    },
+    "events": [
+      {
+        "id": "R1-pre",
+        "meter_uid": "TM-1",
+        "sling_rfid": "RFID-S1",
+        "hook_id": "HP1",
+        "hook_index": 0,
+        "stage": "pre_lift",
+        "at": "2026-12-01T09:05",
+        "value_n": 15701.668,
+        "zero_n": 0.0,
+        "range_n": 30000.0,
+        "calibration": {
+          "issued_at": "2026-06-01T00:00",
+          "valid_until": "2027-06-01T00:00",
+          "kgf_per_n": 0.1019,
+          "unit": "N"
+        }
+      },
+      {
+        "id": "R2-pre",
+        "meter_uid": "TM-2",
+        "sling_rfid": "RFID-S2",
+        "hook_id": "HP2",
+        "hook_index": 1,
+        "stage": "pre_lift",
+        "at": "2026-12-01T09:05",
+        "value_n": 15701.668,
+        "zero_n": 0.0,
+        "range_n": 30000.0,
+        "calibration": {
+          "issued_at": "2026-06-01T00:00",
+          "valid_until": "2027-06-01T00:00",
+          "kgf_per_n": 0.1019,
+          "unit": "N"
+        }
+      },
+      {
+        "id": "R3-pre",
+        "meter_uid": "TM-3",
+        "sling_rfid": "RFID-S3",
+        "hook_id": "HP3",
+        "hook_index": 2,
+        "stage": "pre_lift",
+        "at": "2026-12-01T09:05",
+        "value_n": 15701.668,
+        "zero_n": 0.0,
+        "range_n": 30000.0,
+        "calibration": {
+          "issued_at": "2026-06-01T00:00",
+          "valid_until": "2027-06-01T00:00",
+          "kgf_per_n": 0.1019,
+          "unit": "N"
+        }
+      },
+      {
+        "id": "R1-off",
+        "meter_uid": "TM-1",
+        "sling_rfid": "RFID-S1",
+        "hook_id": "HP1",
+        "hook_index": 0,
+        "stage": "off_ground",
+        "at": "2026-12-01T09:11",
+        "value_n": 883.219,
+        "zero_n": 0.0,
+        "range_n": 30000.0,
+        "calibration": {
+          "issued_at": "2026-06-01T00:00",
+          "valid_until": "2027-06-01T00:00",
+          "kgf_per_n": 0.1019,
+          "unit": "N"
+        }
+      },
+      {
+        "id": "R2-off",
+        "meter_uid": "TM-2",
+        "sling_rfid": "RFID-S2",
+        "hook_id": "HP2",
+        "hook_index": 1,
+        "stage": "off_ground",
+        "at": "2026-12-01T09:11",
+        "value_n": 15014.720314033366,
+        "zero_n": 0.0,
+        "range_n": 30000.0,
+        "calibration": {
+          "issued_at": "2026-06-01T00:00",
+          "valid_until": "2027-06-01T00:00",
+          "kgf_per_n": 0.1019,
+          "unit": "N"
+        }
+      },
+      {
+        "id": "R3-off",
+        "meter_uid": "TM-3",
+        "sling_rfid": "RFID-S3",
+        "hook_id": "HP3",
+        "hook_index": 2,
+        "stage": "off_ground",
+        "at": "2026-12-01T09:11",
+        "value_n": 1766.4376840039254,
+        "zero_n": 0.0,
+        "range_n": 30000.0,
+        "calibration": {
+          "issued_at": "2026-06-01T00:00",
+          "valid_until": "2027-06-01T00:00",
+          "kgf_per_n": 0.1019,
+          "unit": "N"
+        }
+      },
+      {
+        "id": "R1-post",
+        "meter_uid": "TM-1",
+        "sling_rfid": "RFID-S1",
+        "hook_id": "HP1",
+        "hook_index": 0,
+        "stage": "post_lift",
+        "at": "2026-12-01T09:16",
+        "value_n": 11776.251,
+        "zero_n": 0.0,
+        "range_n": 30000.0,
+        "calibration": {
+          "issued_at": "2026-06-01T00:00",
+          "valid_until": "2027-06-01T00:00",
+          "kgf_per_n": 0.1019,
+          "unit": "N"
+        }
+      },
+      {
+        "id": "R2-post",
+        "meter_uid": "TM-2",
+        "sling_rfid": "RFID-S2",
+        "hook_id": "HP2",
+        "hook_index": 1,
+        "stage": "post_lift",
+        "at": "2026-12-01T09:16",
+        "value_n": 11776.251,
+        "zero_n": 0.0,
+        "range_n": 30000.0,
+        "calibration": {
+          "issued_at": "2026-06-01T00:00",
+          "valid_until": "2027-06-01T00:00",
+          "kgf_per_n": 0.1019,
+          "unit": "N"
+        }
+      },
+      {
+        "id": "R3-post",
+        "meter_uid": "TM-3",
+        "sling_rfid": "RFID-S3",
+        "hook_id": "HP3",
+        "hook_index": 2,
+        "stage": "post_lift",
+        "at": "2026-12-01T09:16",
+        "value_n": 11776.251,
+        "zero_n": 0.0,
+        "range_n": 30000.0,
+        "calibration": {
+          "issued_at": "2026-06-01T00:00",
+          "valid_until": "2027-06-01T00:00",
+          "kgf_per_n": 0.1019,
+          "unit": "N"
+        }
+      }
+    ],
+    "digest": "65690260f2f842dca6902ba4ddfbf7f331bd6fbb64540bcc95f1981378580a0e",
+    "asset_version": 1
+  }
+]

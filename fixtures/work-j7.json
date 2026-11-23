@@ -1,0 +1,71 @@
+[
+  {
+    "id": "W7",
+    "kind": "work",
+    "job_id": "J7",
+    "version": 1,
+    "effective_at": "2026-12-01T10:00",
+    "wind_limit_mps": 10,
+    "landing_sites": [
+      {
+        "id": "LS7",
+        "point": [
+          0,
+          -2
+        ],
+        "capacity_kg": 2600,
+        "available_until": "2026-12-31T23:59"
+      }
+    ],
+    "wind_samples": [
+      {
+        "id": "G1",
+        "at": "2026-12-01T08:50",
+        "speed_mps": 5,
+        "source": "station-a",
+        "calibrated_until": "2026-12-31T23:59"
+      },
+      {
+        "id": "G2",
+        "at": "2026-12-01T08:52",
+        "speed_mps": 5,
+        "source": "station-b",
+        "calibrated_until": "2026-12-31T23:59"
+      }
+    ],
+    "permit_actions": [
+      {
+        "id": "K1",
+        "at": "2026-12-01T08:55",
+        "action": "release",
+        "plan_version": 1
+      }
+    ],
+    "hook_events": [
+      {
+        "id": "H1",
+        "at": "2026-12-01T09:00",
+        "stage": "hook",
+        "witness": "Q7"
+      },
+      {
+        "id": "H2",
+        "at": "2026-12-01T09:10",
+        "stage": "lift",
+        "witness": "Q7"
+      },
+      {
+        "id": "H3",
+        "at": "2026-12-01T09:40",
+        "stage": "land",
+        "witness": "Q7"
+      },
+      {
+        "id": "H4",
+        "at": "2026-12-01T09:45",
+        "stage": "sign",
+        "witness": "monitor-7"
+      }
+    ]
+  }
+]

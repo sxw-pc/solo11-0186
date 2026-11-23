@@ -2,7 +2,15 @@
 from __future__ import annotations
 
 from collections import defaultdict
+import hashlib
 import json
+
+
+# Dynamic factor used by the tower-crane rating and by the conservative
+# rigid-static upper bound.  Measured tension-meter readings already contain
+# the real dynamic effect and must not be multiplied by this factor again.
+DYNAMIC_FACTOR = 1.1
+_SHARE_TOL = 1e-9
 
 
 def _segment_hits_box(a, b, box):
@@ -37,7 +45,13 @@ def _route_clear(route, zones, start, end):
     return True
 
 
+def _hook_xy(hook):
+    """Accept a bare [x, y] pair or a ``{point, sling_rfid}`` hook object."""
+    return hook["point"] if isinstance(hook, dict) else hook
+
+
 def _center_supported(center, hooks):
+    hooks = [_hook_xy(h) for h in hooks]
     if len(hooks) < 2 or len(center) != 2:
         return False
     x, y = center
@@ -56,6 +70,58 @@ def _center_supported(center, hooks):
         if abs(cross) > 1e-6:
             signs.append(cross > 0)
     return bool(signs) and all(sign == signs[0] for sign in signs)
+
+
+def _triangle_shares(center, hooks):
+    """Exact barycentric static shares for a three-hook rigid body.
+
+    Returns ``None`` when the geometry is not a non-degenerate triangle or the
+    center is outside the hook triangle.  The weights are ratios only; they do
+    not depend on the measured mass.
+    """
+    if len(hooks) != 3 or len(center) != 2 or len({tuple(p) for p in hooks}) != 3:
+        return None
+    try:
+        (x1, y1), (x2, y2), (x3, y3) = (tuple(p) for p in hooks)
+        x, y = center
+        area2 = (x2 - x1) * (y3 - y1) - (x3 - x1) * (y2 - y1)
+    except (TypeError, ValueError):
+        return None
+    if abs(area2) <= 1e-12:
+        return None
+    w1 = ((x2 - x) * (y3 - y) - (x3 - x) * (y2 - y)) / area2
+    w2 = ((x3 - x) * (y1 - y) - (x1 - x) * (y3 - y)) / area2
+    w3 = ((x1 - x) * (y2 - y) - (x2 - x) * (y1 - y)) / area2
+    shares = [w1, w2, w3]
+    if any(w < -_SHARE_TOL for w in shares) or abs(sum(shares) - 1.0) > 1e-9:
+        return None
+    return [max(0.0, w) for w in shares]
+
+
+def _geometry_digest(hooks, center, bindings=None):
+    payload = json.dumps({"hook_points": hooks, "center": center,
+                          "hook_bindings": bindings or []},
+                         sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+
+
+def _envelope(plan, shares):
+    mass = float(plan.get("mass_kg", 0))
+    walls = []
+    worst = None
+    hooks = [_hook_xy(h) for h in plan["event"].get("hook_points", [])]
+    for index, (hook, share) in enumerate(zip(hooks, shares)):
+        static_kg = mass * share
+        envelope_kg = static_kg * DYNAMIC_FACTOR
+        item = {"index": index, "hook_point": hook, "static_share": share,
+                "static_kg": static_kg, "dynamic_factor": DYNAMIC_FACTOR,
+                "envelope_kg": envelope_kg}
+        walls.append(item)
+        if worst is None or envelope_kg > worst["envelope_kg"]:
+            worst = item
+    return {"model": "rigid_static_barycentric", "source": "analysis",
+            "mass_kg": mass, "dynamic_factor": DYNAMIC_FACTOR,
+            "hook_count": len(shares), "walls": walls, "worst": worst}
 
 
 def _choose(events):
@@ -87,11 +153,25 @@ def evaluate(events):
                              event["window_start"], event["window_end"])
         signed = event.get("signed_version") == event["version"] and not event.get("revoked", False)
         ready = bool(mass > 0 and center_ok and clear and signed and not conflict)
+        hook_xy = [_hook_xy(h) for h in hooks]
+        shares = _triangle_shares(event.get("center", []), hook_xy)
+        bindings = [((h or {}).get("sling_rfid") if isinstance(h, dict) else None) for h in hooks]
+        geometry_sha = _geometry_digest(hooks, event.get("center", []), bindings)
+        plan = {"event": event, "mass_kg": mass, "signed": signed,
+                "geometry_sha": geometry_sha}
+        # Only a real triangle has a rigorous static split.  For any other
+        # hook count the envelope is unknown (``None``) rather than invented.
+        envelope = _envelope(plan, shares) if shares else None
         result[job] = {
             "event": event, "version_conflict": conflict, "mass_kg": mass,
             "mass_event": measured["id"] if measured else None, "moment_kgm": mass * event["radius_m"],
             "center_ok": center_ok, "route_clear": clear, "signed": signed,
             "ready": ready, "status": "signed" if ready else "revision_conflict" if conflict else "pending_revision",
+            "hook_points": hooks, "geometry_sha": geometry_sha,
+            "load_share": {"model": "barycentric" if shares else "unsupported",
+                           "shares": shares,
+                           "supported": bool(center_ok and shares)},
+            "envelope": envelope,
             "decisions": {
                 "吊物重量版本核定": ("有效" if mass > 0 and not conflict else "待复测", "独立复测重量版本及力矩"),
                 "吊点重心方案签认": ("签认" if center_ok and signed and not conflict else "撤回", "吊点包络覆盖重心并绑定方案版本"),

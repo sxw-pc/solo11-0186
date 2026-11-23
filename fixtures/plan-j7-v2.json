@@ -1,0 +1,72 @@
+[
+  {
+    "id": "P7b",
+    "kind": "plan",
+    "job_id": "J7",
+    "version": 2,
+    "effective_at": "2026-12-01T08:40",
+    "window_start": "2026-12-01T09:00",
+    "window_end": "2026-12-01T10:00",
+    "radius_m": 8,
+    "boom_m": 20,
+    "measurements": [
+      {
+        "id": "M0",
+        "type": "estimate",
+        "kg": 1700,
+        "at": "2026-11-30T15:00",
+        "witness": "planner"
+      },
+      {
+        "id": "M7",
+        "type": "independent",
+        "kg": 1800,
+        "at": "2026-12-01T07:50",
+        "witness": "surveyor"
+      }
+    ],
+    "center": [
+      0.8,
+      0.1
+    ],
+    "hook_points": [
+      {
+        "id": "HP1",
+        "point": [
+          -1,
+          0
+        ],
+        "sling_rfid": "RFID-S1"
+      },
+      {
+        "id": "HP2",
+        "point": [
+          1,
+          0
+        ],
+        "sling_rfid": "RFID-S2"
+      },
+      {
+        "id": "HP3",
+        "point": [
+          0,
+          1
+        ],
+        "sling_rfid": "RFID-S3"
+      }
+    ],
+    "route": [
+      [
+        0,
+        0
+      ],
+      [
+        2,
+        0
+      ]
+    ],
+    "zones": [],
+    "signed_version": 2,
+    "revoked": false
+  }
+]

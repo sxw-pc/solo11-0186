@@ -4,8 +4,26 @@ from __future__ import annotations
 from collections import defaultdict
 import math
 
+from . import tension_capture
+
 
 STAGES = ("hook", "lift", "land", "sign")
+
+
+def _capture_blocks(asset, capture):
+    """A measured lift-stage failure only stops the plan/asset it was taken on.
+
+    ``applies_to_current_plan`` is not enough: a capture bound to an older
+    asset version (e.g. before an equalising-beam retrofit) still describes
+    the old configuration.  Only an overload that is accepted against the
+    *current* asset bindings may stop the current permit.
+    """
+    if not capture or not tension_capture.needs_emergency(capture):
+        return False
+    sources = (asset or {}).get("sling_sources", {})
+    measured = sources.get("measured") or {}
+    return bool(measured.get("applies_to_current_plan")
+                and measured.get("asset_binding_ok", True))
 
 
 def _choose(events):
@@ -67,8 +85,9 @@ def _safe_landing_site(event, plan):
     return sorted(candidates)[0][1] if candidates else None
 
 
-def evaluate(events, plans, resources):
+def evaluate(events, plans, resources, captures=None):
     result = {}
+    captures = captures or {}
     for job, event in _choose(events).items():
         plan, asset = plans.get(job), resources.get(job)
         limit = event.get("wind_limit_mps", 10)
@@ -86,8 +105,12 @@ def evaluate(events, plans, resources):
                        and resume[-1]["plan_version"] == permit_version)
         wind_ok = calibrated and (not high_at or resumed)
         source_ready = bool(plan and plan["ready"] and asset and asset["ready"])
-        active = source_ready and released and wind_ok and not hooks["lifted"]
-        emergency = hooks["lifted"] and (wind_stopped or not source_ready)
+        # A measured overload during the off-ground stage is its own stop
+        # signal: it can turn an otherwise authorised lift into an emergency
+        # landing.
+        measured_overload = _capture_blocks(asset, captures.get(job))
+        active = source_ready and released and wind_ok and not hooks["lifted"] and not measured_overload
+        emergency = hooks["lifted"] and (wind_stopped or not source_ready or measured_overload)
         landing_site = _safe_landing_site(event, plan) if emergency else None
         gate_at = resume[-1]["at"] if high_at and resumed else release[-1]["at"] if release else None
         hook_times = [h["at"] for h in event.get("hook_events", [])]
@@ -102,7 +125,7 @@ def evaluate(events, plans, resources):
             "event": event, "status": status, "active": active, "completed": completed,
             "wind_stopped": wind_stopped, "wind_resumed": resumed,
             "hook_state": hooks, "emergency_landing": emergency,
-            "landing_site": landing_site,
+            "landing_site": landing_site, "measured_overload": measured_overload,
             "decisions": {
                 "现场风速停复工": ("放行" if active or completed else "停工", "双源连续校准风速、复工许可与当前方案版本"),
                 "起落钩闭环核验": ("完工" if completed else "悬停或待核", "四阶段时序及独立签收"),
