@@ -4,7 +4,7 @@ from pathlib import Path
 from . import __file__ as module_file
 from .store import connect,import_file,report,audit
 
-IMPORTS={'plan-import': 'plan', 'asset-import': 'asset', 'work-import': 'work'}
+IMPORTS={'plan-import': 'plan', 'asset-import': 'asset', 'work-import': 'work', 'gis-import': 'gis'}
 def main(argv=None):
     parser=argparse.ArgumentParser(prog='liftpermit')
     parser.add_argument('command',choices=list(IMPORTS)+['demo','report','audit'])

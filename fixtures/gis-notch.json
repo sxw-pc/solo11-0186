@@ -1,0 +1,29 @@
+[
+  {
+    "id": "GIS1",
+    "kind": "gis",
+    "bulletin_id": "CITY-2026-GIS-NOTCH",
+    "revision": 1,
+    "issued_at": "2026-11-30T18:00",
+    "crs": {"name": "site-local"},
+    "boundary": "closed",
+    "effective_from": "2026-12-01T08:00",
+    "effective_until": "2026-12-01T11:00",
+    "control_error_m": 1.5,
+    "geojson": {
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "properties": {"name": "u-notch-zone"},
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [[1, 1], [5, 1], [5, 5], [4, 5], [4, 2], [2, 2], [2, 5], [1, 5], [1, 1]]
+            ]
+          }
+        }
+      ]
+    }
+  }
+]

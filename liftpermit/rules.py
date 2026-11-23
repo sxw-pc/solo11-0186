@@ -31,7 +31,7 @@ def calculate(events):
 
 def business_records(event):
     subsystem = {"plan": "吊装方案账", "asset": "设备与人员资格账",
-                 "work": "现场许可与作业账"}[event["kind"]]
+                 "work": "现场许可与作业账", "gis": "吊装方案账"}[event["kind"]]
     base = event["id"]
     records = []
 
@@ -61,7 +61,7 @@ def business_records(event):
         })
         for i, item in enumerate(event.get("competing_reservations", [])):
             add("塔机预留", f"{base}:reservation:{i}", item)
-    else:
+    elif event["kind"] == "work":
         add("作业许可", f"{base}:permit", {"job_id": event["job_id"],
                                       "actions": event.get("permit_actions", [])})
         for i, item in enumerate(event.get("landing_sites", [])):
@@ -70,4 +70,18 @@ def business_records(event):
             add("风速观测", f"{base}:wind:{i}", item)
         for i, item in enumerate(event.get("hook_events", [])):
             add("起落钩事件", f"{base}:hook:{i}", item)
+    else:
+        add("公告版本", f"{base}:bulletin", {
+            "bulletin_id": event["bulletin_id"], "revision": event["revision"],
+            "effective_from": event["effective_from"],
+            "effective_until": event["effective_until"],
+            "revoked_at": event.get("revoked_at"),
+            "retraction": event.get("retraction", "forward"),
+            "error_m": event.get("error_m"),
+            "error_source": event.get("error_source"),
+        })
+        for i, item in enumerate(event.get("zones", [])):
+            add("禁入区公告", f"{base}:zone:{i}", item)
+        if event.get("survey"):
+            add("控制点复测", f"{base}:survey", event["survey"])
     return records

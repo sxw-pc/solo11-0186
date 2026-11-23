@@ -3,7 +3,7 @@ import json
 import sqlite3
 from pathlib import Path
 
-from . import rules
+from . import gis_capture, rules
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS source_files (sha TEXT PRIMARY KEY, kind TEXT NOT NULL, raw BLOB NOT NULL, imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
@@ -20,12 +20,20 @@ def connect(path):
     db.executescript(SCHEMA)
     return db
 
+# Kind-specific capture hooks normalize a source event before it is stored.
+# A GIS bulletin that cannot be interpreted fails the whole import instead of
+# degrading into an empty exclusion zone that would silently let routes pass.
+_CAPTURE={'gis': gis_capture.capture_event}
+
 def import_file(db, kind, file):
     raw=Path(file).read_bytes()
     sha=hashlib.sha256(raw).hexdigest()
     payload=json.loads(raw)
     if not isinstance(payload,list) or not payload:
         raise ValueError('source must contain a nonempty event list')
+    capture=_CAPTURE.get(kind)
+    if capture:
+        payload=[capture(event) for event in payload]
     if db.execute('SELECT 1 FROM source_files WHERE sha=?',(sha,)).fetchone():
         return {'sha':sha,'inserted':0,'idempotent':True}
     db.execute('SAVEPOINT ingest')
@@ -54,6 +62,7 @@ def import_file(db, kind, file):
 
 def rebuild(db):
     events=[json.loads(row[0]) for row in db.execute('SELECT body FROM events ORDER BY seq')]
+    events=gis_capture.resolve_events(events)
     decisions,states=rules.calculate(events)
     revision=db.execute('SELECT COUNT(*) FROM source_files').fetchone()[0]+1
     db.execute('DELETE FROM decisions')

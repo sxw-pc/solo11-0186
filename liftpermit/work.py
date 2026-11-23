@@ -4,6 +4,8 @@ from __future__ import annotations
 from collections import defaultdict
 import math
 
+from . import gis_capture
+
 
 STAGES = ("hook", "lift", "land", "sign")
 
@@ -47,24 +49,70 @@ def _hook_state(items, commander):
             "lifted": lifted, "independent_sign": independent_sign}
 
 
+def _site_zone_blocks(point, zones, at):
+    """Reasons a landing point is blocked by the plan's zones at time ``at``.
+
+    Uses the exact zone geometry resolved into the plan ledger (legacy rect
+    or captured polygon with its error band), so the site ledger never rules
+    against a different map version.  Anything uninterpretable blocks.
+    """
+    reasons = []
+    for zone in zones:
+        if not isinstance(zone, dict):
+            reasons.append("禁区记录无法解释")
+            continue
+        if zone.get("void"):
+            continue
+        if "rect" not in zone and "rings" not in zone:
+            reasons.append("禁区公告缺失或无法解释")
+            continue
+        if not (zone.get("start", "") <= at <= zone.get("end", "")):
+            continue
+        if "rect" in zone:
+            box = zone["rect"]
+            if len(box) != 4 or box[0] > box[2] or box[1] > box[3]:
+                reasons.append("禁区矩形参数非法")
+                continue
+            if box[0] <= point[0] <= box[2] and box[1] <= point[1] <= box[3]:
+                reasons.append("落点位于矩形禁区内")
+        else:
+            try:
+                verdict, entry = gis_capture.point_zone_verdict(point, zone)
+            except (ValueError, TypeError, KeyError, IndexError):
+                reasons.append("禁区多边形几何非法")
+                continue
+            if verdict != gis_capture.VERDICT_CLEAR:
+                reasons.append(f"落点{verdict}:{entry['reason']}")
+    return reasons
+
+
 def _safe_landing_site(event, plan):
+    """Pick the nearest usable emergency landing site, with per-site evidence."""
     if not plan:
-        return None
+        return None, []
     mass = plan["mass_kg"]
     radius = plan["event"]["radius_m"]
     zones = plan["event"].get("zones", [])
     at = event.get("effective_at", "")
     candidates = []
+    evidence = []
     for site in event.get("landing_sites", []):
         x, y = site["point"]
         distance = math.hypot(x, y)
-        blocked = any(z["start"] <= at <= z["end"]
-                      and z["rect"][0] <= x <= z["rect"][2]
-                      and z["rect"][1] <= y <= z["rect"][3] for z in zones)
-        if (not blocked and site["capacity_kg"] >= mass
-                and site["available_until"] >= at and distance <= radius):
+        rejected = list(_site_zone_blocks(site["point"], zones, at))
+        if site["capacity_kg"] < mass:
+            rejected.append("落点承载不足")
+        if site["available_until"] < at:
+            rejected.append("落点已过期")
+        if distance > radius:
+            rejected.append("超出吊钩半径")
+        usable = not rejected
+        evidence.append({"site": site["id"], "usable": usable,
+                         "reason": "可用" if usable else "；".join(rejected)})
+        if usable:
             candidates.append((distance, site["id"]))
-    return sorted(candidates)[0][1] if candidates else None
+    chosen = sorted(candidates)[0][1] if candidates else None
+    return chosen, evidence
 
 
 def evaluate(events, plans, resources):
@@ -88,7 +136,7 @@ def evaluate(events, plans, resources):
         source_ready = bool(plan and plan["ready"] and asset and asset["ready"])
         active = source_ready and released and wind_ok and not hooks["lifted"]
         emergency = hooks["lifted"] and (wind_stopped or not source_ready)
-        landing_site = _safe_landing_site(event, plan) if emergency else None
+        landing_site, landing_evidence = _safe_landing_site(event, plan) if emergency else (None, [])
         gate_at = resume[-1]["at"] if high_at and resumed else release[-1]["at"] if release else None
         hook_times = [h["at"] for h in event.get("hook_events", [])]
         hook_in_window = bool(plan and gate_at and hook_times
@@ -102,12 +150,12 @@ def evaluate(events, plans, resources):
             "event": event, "status": status, "active": active, "completed": completed,
             "wind_stopped": wind_stopped, "wind_resumed": resumed,
             "hook_state": hooks, "emergency_landing": emergency,
-            "landing_site": landing_site,
+            "landing_site": landing_site, "landing_evidence": landing_evidence,
             "decisions": {
                 "现场风速停复工": ("放行" if active or completed else "停工", "双源连续校准风速、复工许可与当前方案版本"),
                 "起落钩闭环核验": ("完工" if completed else "悬停或待核", "四阶段时序及独立签收"),
                 "悬吊物应急落地": ((f"应急落地:{landing_site}" if landing_site else "无安全落点")
-                                     if emergency else "无需", "离地未落钩遇停工或资源失格，按载荷/禁区/半径选择落点"),
+                                     if emergency else "无需", "离地未落钩遇停工或资源失格，按载荷、同一公告版本禁区与半径选择落点"),
                 "监理独立见证": ("见证" if hooks["independent_sign"] else "待见证", "签收人与指挥员分离"),
             },
         }

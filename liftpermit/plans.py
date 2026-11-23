@@ -4,6 +4,8 @@ from __future__ import annotations
 from collections import defaultdict
 import json
 
+from . import gis_capture
+
 
 def _segment_hits_box(a, b, box):
     """Closed segment/rectangle intersection, including a tangent at the boundary."""
@@ -24,17 +26,68 @@ def _segment_hits_box(a, b, box):
     return True
 
 
-def _route_clear(route, zones, start, end):
+def _route_ruling(route, zones, start, end):
+    """Rule every route segment against every active zone.
+
+    Legacy ``rect`` zones keep their original axis-aligned rectangle
+    semantics so migrated plans replay unchanged.  Normalized polygon
+    ``rings`` zones are judged by gis_capture against the forbidden region,
+    its boundary convention and its survey error band; a polygon is never
+    silently replaced by its bounding rectangle.  References to bulletins
+    that cannot be resolved fail closed.  Returns (clear, evidence) where
+    evidence marks every checked segment 禁止/待测/可通行.
+    """
     if len(route) < 2:
-        return False
+        return False, [{"verdict": gis_capture.VERDICT_FORBIDDEN,
+                        "reason": "回转路径不足两点"}]
+    clear = True
+    evidence = []
     for zone in zones:
-        if zone["start"] <= end and zone["end"] >= start:
+        if not isinstance(zone, dict):
+            evidence.append({"verdict": gis_capture.VERDICT_FORBIDDEN,
+                             "reason": "禁区记录无法解释"})
+            clear = False
+            continue
+        if zone.get("void"):
+            evidence.append({"verdict": gis_capture.VERDICT_CLEAR,
+                             "zone_id": zone.get("zone_id"),
+                             "reason": zone.get("void_reason", "公告已撤销")})
+            continue
+        if "rect" not in zone and "rings" not in zone:
+            evidence.append({"verdict": gis_capture.VERDICT_FORBIDDEN,
+                             "zone_id": zone.get("zone_id") or zone.get("bulletin"),
+                             "reason": "禁区公告缺失或无法解释"})
+            clear = False
+            continue
+        if not (zone.get("start", "") <= end and zone.get("end", "") >= start):
+            continue
+        if "rect" in zone:
             box = zone["rect"]
             if len(box) != 4 or box[0] > box[2] or box[1] > box[3]:
-                return False
-            if any(_segment_hits_box(a, b, box) for a, b in zip(route, route[1:])):
-                return False
-    return True
+                evidence.append({"verdict": gis_capture.VERDICT_FORBIDDEN,
+                                 "reason": "禁区矩形参数非法"})
+                clear = False
+                continue
+            for i, (a, b) in enumerate(zip(route, route[1:])):
+                if _segment_hits_box(a, b, box):
+                    evidence.append({"verdict": gis_capture.VERDICT_FORBIDDEN,
+                                     "reason": "线段穿越矩形禁区",
+                                     "segment_index": i, "segment": [a, b]})
+                    clear = False
+        else:
+            try:
+                segment_evidence = gis_capture.route_zone_evidence(route, zone)
+            except (ValueError, TypeError, KeyError, IndexError):
+                evidence.append({"verdict": gis_capture.VERDICT_FORBIDDEN,
+                                 "zone_id": zone.get("zone_id"),
+                                 "reason": "禁区多边形几何非法"})
+                clear = False
+                continue
+            for entry in segment_evidence:
+                evidence.append(entry)
+                if entry["verdict"] != gis_capture.VERDICT_CLEAR:
+                    clear = False
+    return clear, evidence
 
 
 def _center_supported(center, hooks):
@@ -83,19 +136,25 @@ def evaluate(events):
         mass = measured["kg"] if measured else 0
         hooks = event.get("hook_points", [])
         center_ok = _center_supported(event.get("center", []), hooks)
-        clear = _route_clear(event.get("route", []), event.get("zones", []),
-                             event["window_start"], event["window_end"])
+        clear, route_evidence = _route_ruling(event.get("route", []), event.get("zones", []),
+                                              event["window_start"], event["window_end"])
+        route_state = (gis_capture.VERDICT_FORBIDDEN
+                       if any(e["verdict"] == gis_capture.VERDICT_FORBIDDEN for e in route_evidence)
+                       else gis_capture.VERDICT_UNCERTAIN
+                       if any(e["verdict"] == gis_capture.VERDICT_UNCERTAIN for e in route_evidence)
+                       else gis_capture.VERDICT_CLEAR)
         signed = event.get("signed_version") == event["version"] and not event.get("revoked", False)
         ready = bool(mass > 0 and center_ok and clear and signed and not conflict)
         result[job] = {
             "event": event, "version_conflict": conflict, "mass_kg": mass,
             "mass_event": measured["id"] if measured else None, "moment_kgm": mass * event["radius_m"],
             "center_ok": center_ok, "route_clear": clear, "signed": signed,
+            "route_state": route_state, "route_evidence": route_evidence,
             "ready": ready, "status": "signed" if ready else "revision_conflict" if conflict else "pending_revision",
             "decisions": {
                 "吊物重量版本核定": ("有效" if mass > 0 and not conflict else "待复测", "独立复测重量版本及力矩"),
                 "吊点重心方案签认": ("签认" if center_ok and signed and not conflict else "撤回", "吊点包络覆盖重心并绑定方案版本"),
-                "回转路径禁区核验": ("可通行" if clear else "重画", "几何路径与有效禁区时窗求交"),
+                "回转路径禁区核验": ("可通行" if clear else "重画", "逐段路径与有效禁区时窗、边界约定及测量误差带求交"),
                 "方案签认撤回": ("有效" if signed and not conflict else "撤回", "旧方案签认不得沿用到新版本"),
             },
         }
