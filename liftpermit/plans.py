@@ -73,6 +73,26 @@ def _choose(events):
     return chosen
 
 
+def requirement(job, account):
+    """Project a plan account into the scheduler's crane-fit requirement.
+
+    方案窗口与独立复测重量决定塔机适配:日历分配器只消费这份投影,
+    不反向改写方案账。
+    """
+    event = account["event"]
+    return {
+        "job_id": job,
+        "mass_kg": account["mass_kg"],
+        "window_start": event["window_start"],
+        "window_end": event["window_end"],
+        "radius_m": event["radius_m"],
+        "boom_m": event["boom_m"],
+        "hook_points": len(event.get("hook_points", [])),
+        "plan_version": event["version"],
+        "plan_ready": account["ready"],
+    }
+
+
 def evaluate(events):
     result = {}
     for job, (event, conflict) in _choose(events).items():

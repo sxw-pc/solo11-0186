@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS decisions (name TEXT PRIMARY KEY, result TEXT NOT NUL
 CREATE TABLE IF NOT EXISTS entity_state (subsystem TEXT NOT NULL, entity_id TEXT NOT NULL, state TEXT NOT NULL, version INTEGER NOT NULL, PRIMARY KEY(subsystem,entity_id));
 CREATE TABLE IF NOT EXISTS decision_history (revision INTEGER NOT NULL, name TEXT NOT NULL, result TEXT NOT NULL, reason TEXT NOT NULL, PRIMARY KEY(revision,name));
 CREATE TABLE IF NOT EXISTS business_record (subsystem TEXT NOT NULL, entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, source_event TEXT NOT NULL, version INTEGER NOT NULL, body TEXT NOT NULL, PRIMARY KEY(subsystem,entity_type,entity_id,version));
+CREATE TABLE IF NOT EXISTS calendar_state (section TEXT NOT NULL, ref TEXT NOT NULL, body TEXT NOT NULL, PRIMARY KEY(section,ref));
 """
 
 def connect(path):
@@ -54,11 +55,12 @@ def import_file(db, kind, file):
 
 def rebuild(db):
     events=[json.loads(row[0]) for row in db.execute('SELECT body FROM events ORDER BY seq')]
-    decisions,states=rules.calculate(events)
+    decisions,states,extras=rules.calculate(events)
     revision=db.execute('SELECT COUNT(*) FROM source_files').fetchone()[0]+1
     db.execute('DELETE FROM decisions')
     db.execute('DELETE FROM entity_state')
     db.execute('DELETE FROM business_record')
+    db.execute('DELETE FROM calendar_state')
     for name,item in sorted(decisions.items()):
         db.execute('INSERT INTO decisions VALUES (?,?,?,?)',(name,item['result'],item['reason'],json.dumps(item['evidence'],ensure_ascii=False,sort_keys=True)))
         db.execute('INSERT OR REPLACE INTO decision_history VALUES (?,?,?,?)',(revision,name,item['result'],item['reason']))
@@ -67,11 +69,29 @@ def rebuild(db):
     for event in events:
         for subsystem,entity_type,entity_id,body in rules.business_records(event):
             db.execute('INSERT OR REPLACE INTO business_record VALUES (?,?,?,?,?,?)',(subsystem,entity_type,entity_id,event['id'],event.get('version',1),json.dumps(body,ensure_ascii=False,sort_keys=True)))
+    view=extras.get('calendar')
+    if view:
+        rows=[]
+        for inst in view['instances']:
+            rows.append(('instance',inst['key'],inst))
+        for edge in view['edges']:
+            rows.append(('edge',f"{edge['a']}~{edge['b']}",edge))
+        allocation=view.get('allocation')
+        if allocation:
+            rows.append(('protocol','protocol',{'protocol':allocation['protocol'],'dispatch':view['dispatch_id']}))
+            for row in allocation['assignments']:
+                rows.append(('assignment',row['job_id'],row))
+            for row in allocation['pending']:
+                rows.append(('pending',row['job_id'],row))
+            rows.append(('objective','objective',allocation['objective']))
+        for section,ref,body in rows:
+            db.execute('INSERT OR REPLACE INTO calendar_state VALUES (?,?,?)',(section,ref,json.dumps(body,ensure_ascii=False,sort_keys=True)))
 
 def report(db):
     return {'decisions':{r['name']:{'result':r['result'],'reason':r['reason'],'evidence':json.loads(r['evidence'])} for r in db.execute('SELECT * FROM decisions ORDER BY name')},
             'entities':[dict(r) for r in db.execute('SELECT * FROM entity_state ORDER BY subsystem,entity_id')],
             'business_records':[dict(r) for r in db.execute('SELECT * FROM business_record ORDER BY subsystem,entity_type,entity_id,version')],
+            'calendar':[{**dict(r),'body':json.loads(r['body'])} for r in db.execute('SELECT * FROM calendar_state ORDER BY section,ref')],
             'sources':[dict(r) for r in db.execute('SELECT sha,kind FROM source_files ORDER BY sha')]}
 
 def audit(db):

@@ -1,15 +1,23 @@
 """Integrate independently runnable plan, resource, and site decisions."""
 from __future__ import annotations
 
-from . import plans, resources, work
+from . import calendar_capture, plans, resources, work
+
+CALENDAR_SUBSYSTEM = "日历采入与分配账"
 
 
 def calculate(events):
     plan_events = [e for e in events if e["kind"] == "plan"]
     asset_events = [e for e in events if e["kind"] == "asset"]
     work_events = [e for e in events if e["kind"] == "work"]
+    calendar_events = [e for e in events if e["kind"] == "calendar"]
+    dispatch_events = [e for e in events if e["kind"] == "dispatch"]
     p = plans.evaluate(plan_events)
-    a = resources.evaluate(asset_events, p)
+    view = (calendar_capture.evaluate(calendar_events, dispatch_events, p)
+            if calendar_events or dispatch_events else None)
+    allocation = view["allocation"] if view else None
+    fleet = {c["id"]: c for c in view["fleet"]} if view else None
+    a = resources.evaluate(asset_events, p, allocation=allocation, fleet=fleet)
     w = work.evaluate(work_events, p, a)
     decisions, states = {}, []
     for subsystem, accounts in [
@@ -26,12 +34,32 @@ def calculate(events):
             for name, (result, reason) in account["decisions"].items():
                 decisions[f"{job}/{name}"] = {"result": result, "reason": reason,
                                                "evidence": related}
-    return decisions, states
+    if view and view["allocation"]:
+        evidence = sorted({e["id"] for e in calendar_events} | {view["dispatch_id"]})
+        version = view["dispatch_version"]
+        for row in view["allocation"]["assignments"]:
+            job = row["job_id"]
+            note = f"{row['crane_id']}@{row['start']}"
+            reason = ("当班完成协议:改派需触发新签认" if row["booking_resign"]
+                      else "当班完成协议:原窗原机或授权改派" if view["protocol"] == "same_shift"
+                      else "保留签认协议:签认不可自动转让")
+            decisions[f"{job}/全局设备分配"] = {"result": note, "reason": reason,
+                                                 "evidence": evidence}
+            states.append((CALENDAR_SUBSYSTEM, job, f"allocated:{row['crane_id']}", version))
+        for row in view["allocation"]["pending"]:
+            job = row["job_id"]
+            blocked = "; ".join(b["detail"] for b in row["blocked_by"]) or "无可行设备"
+            decisions[f"{job}/全局设备分配"] = {"result": "待改期", "reason": blocked,
+                                                 "evidence": evidence}
+            states.append((CALENDAR_SUBSYSTEM, job, "reschedule", version))
+    extras = {"calendar": view} if view else {}
+    return decisions, states, extras
 
 
 def business_records(event):
     subsystem = {"plan": "吊装方案账", "asset": "设备与人员资格账",
-                 "work": "现场许可与作业账"}[event["kind"]]
+                 "work": "现场许可与作业账", "calendar": CALENDAR_SUBSYSTEM,
+                 "dispatch": CALENDAR_SUBSYSTEM}[event["kind"]]
     base = event["id"]
     records = []
 
@@ -61,6 +89,16 @@ def business_records(event):
         })
         for i, item in enumerate(event.get("competing_reservations", [])):
             add("塔机预留", f"{base}:reservation:{i}", item)
+    elif event["kind"] == "calendar":
+        add("日历包", f"{base}:package", {
+            "issuer": event["issuer"], "format": event["format"],
+            "chars": len(event.get("text", "")),
+        })
+    elif event["kind"] == "dispatch":
+        add("分配策略", f"{base}:policy", {
+            "protocol": event.get("protocol"), "local_tz": event.get("local_tz"),
+            "fleet": [c["id"] for c in event.get("fleet", [])],
+        })
     else:
         add("作业许可", f"{base}:permit", {"job_id": event["job_id"],
                                       "actions": event.get("permit_actions", [])})

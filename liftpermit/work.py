@@ -97,7 +97,8 @@ def evaluate(events, plans, resources):
         completed = active and hooks["completed"] and hook_in_window
         status = ("finished" if completed else "emergency_landing" if emergency else
                   "suspended" if hooks["lifted"] else "paused" if wind_stopped else
-                  "resumed" if resumed and active else "released" if active else "pending")
+                  "resumed" if resumed and active else "released" if active else
+                  "reschedule" if asset and asset.get("status") == "reschedule" else "pending")
         result[job] = {
             "event": event, "status": status, "active": active, "completed": completed,
             "wind_stopped": wind_stopped, "wind_resumed": resumed,

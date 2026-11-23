@@ -12,7 +12,13 @@ python -m liftpermit audit --db demo.sqlite
 python -m unittest discover -s tests -v
 ```
 
-独立入口：plan-import、asset-import、work-import。每项导入格式为 `--db state.sqlite --file fixtures/<name>.json`。同源重复幂等，异内容复用事件 ID 则整批回滚。`audit` 在空库重放原始文件并比对业务状态。
+独立入口：plan-import、asset-import、work-import、calendar-import、dispatch-import。每项导入格式为 `--db state.sqlite --file fixtures/<name>.json`。同源重复幂等，异内容复用事件 ID 则整批回滚。`audit` 在空库重放原始文件并比对业务状态。
+
+## 日历采入与全局分配
+
+- `calendar-import` 采入租赁循环档期（ICS）与现场逐日 CSV。ICS 展开 RRULE/EXDATE/RECURRENCE-ID，系列 UID 本身不算一次预约；CSV 解析设备别名、时区、已签认与取消。实例身份键为 `发行方|系列|原实例起点(UTC)`：改期实例沿用原键，取消保留为指向旧实例的墓碑，同号 booking_id 跨发行方各自成键。归并按 (stamp, 取消优先) 取最新事实——取消可以先于原单到达，晚到的旧 CSV 无法复活已取消的占用。循环按本地墙钟展开、以 UTC 时刻判重查交叠，夏令时折返的歧义时刻确定性取 fold=0，因此重复导入与中断后重算得到同一张实例表。
+- 冲突图按作业、时段、设备、能力与班次查询，并随 `calendar_state` 表持久化。`dispatch-import` 选择两种被授权的分配协议：`same_shift`（当班完成，授权重签，签认过的预约可改派其它可行塔机）与 `preserve_signoff`（保留签认，签认不可自动转让，已签认工单钉在原机）。分配器在容量（每机每窗一工单）、额定（半径/臂长曲线 ≥ 复测重量×1.1）与签认约束下全局回溯求解，不按导入顺序逐作业贪心；无解时 `blocked_by` 逐条列出是哪条容量、额定或签认约束挡住了哪个作业。
+- 分配表回灌资源账：被改派的工单按机队事实重绑塔机与时段，待改期工单标记 `pending`，不得伪称仍持有预留；现场账据此给出 `reschedule` 状态。**何时触发新的签认**：分配把已签认工单改离原机（`booking_resign=true`）时须重签该预订；方案本身的窗口/重量/几何一旦变化即产生新版本，旧签认不得沿用（`signed_version` 必须等于当前版本）。**何时原 work 挂钩不能追认**：方案升版后，旧版本的 release/resume 许可不再匹配当前 `plan_version`，且起落钩事件必须不早于当前方案许可并落在当前窗口内——改期前留下的挂钩记录不会被新窗口追认。
 
 ## 三套业务账与证据
 
