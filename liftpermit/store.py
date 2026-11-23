@@ -4,6 +4,9 @@ import sqlite3
 from pathlib import Path
 
 from . import rules
+from . import handoff_capture
+
+VALIDATORS = {'handoff': handoff_capture.validate_events}
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS source_files (sha TEXT PRIMARY KEY, kind TEXT NOT NULL, raw BLOB NOT NULL, imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
@@ -26,6 +29,9 @@ def import_file(db, kind, file):
     payload=json.loads(raw)
     if not isinstance(payload,list) or not payload:
         raise ValueError('source must contain a nonempty event list')
+    validator=VALIDATORS.get(kind)
+    if validator:
+        validator(payload)
     if db.execute('SELECT 1 FROM source_files WHERE sha=?',(sha,)).fetchone():
         return {'sha':sha,'inserted':0,'idempotent':True}
     db.execute('SAVEPOINT ingest')

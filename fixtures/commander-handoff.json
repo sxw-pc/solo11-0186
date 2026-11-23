@@ -1,0 +1,108 @@
+[
+  {
+    "id": "HO1",
+    "kind": "handoff",
+    "job_id": "J1",
+    "version": 1,
+    "effective_at": "2026-12-01T08:50",
+    "plan_version": 1,
+    "window_start": "2026-12-01T09:00",
+    "window_end": "2026-12-01T10:00",
+    "readers": [
+      {
+        "id": "R1",
+        "key": "reader-r1-key",
+        "clock_error_min": 3
+      },
+      {
+        "id": "R2",
+        "key": "reader-r2-key",
+        "clock_error_min": 3
+      }
+    ],
+    "swipes": [
+      {
+        "id": "C1",
+        "reader": "R1",
+        "person": "Q1",
+        "action": "sign_in",
+        "local_at": "2026-12-01T08:00",
+        "seq": 41,
+        "recorded_at": "2026-12-01T08:01",
+        "signature": "bb4277eeafe924822a28701502b81263fd05942ebf8a6bab762af3daf8e22e19"
+      },
+      {
+        "id": "C2",
+        "reader": "R1",
+        "person": "Q1",
+        "action": "sign_out",
+        "local_at": "2026-12-01T09:30",
+        "seq": 42,
+        "recorded_at": "2026-12-01T09:31",
+        "signature": "fb901b4d890b3754d1430df1608be7c82ac92d426eb3e8f7d649eab5d8c1014e"
+      },
+      {
+        "id": "C3",
+        "reader": "R2",
+        "person": "Q2",
+        "action": "sign_in",
+        "local_at": "2026-12-01T09:30",
+        "seq": 7,
+        "recorded_at": "2026-12-01T09:31",
+        "signature": "8189eac71b93424bdf8619e1abfa820f8011d0d85da030eec342996df1f3095e"
+      },
+      {
+        "id": "C4",
+        "reader": "R2",
+        "person": "Q2",
+        "action": "sign_out",
+        "local_at": "2026-12-01T11:00",
+        "seq": 8,
+        "recorded_at": "2026-12-01T11:01",
+        "signature": "9fea39b494c3b6fafeb7c9add51f6834c29b616055464599f17f4a865d30d298"
+      }
+    ],
+    "people": [
+      {
+        "id": "Q1",
+        "name": "秦一",
+        "cert": {
+          "id": "CERT-Q1",
+          "holder_id": "Q1",
+          "holder_name": "秦一",
+          "categories": ["tower_command"],
+          "until": "2026-12-31T23:59"
+        },
+        "suspensions": []
+      },
+      {
+        "id": "Q2",
+        "name": "秦二",
+        "cert": {
+          "id": "CERT-Q2",
+          "holder_id": "Q2",
+          "holder_name": "秦二",
+          "categories": ["tower_command"],
+          "until": "2026-12-31T23:59"
+        },
+        "suspensions": []
+      }
+    ],
+    "roster": [
+      {
+        "person": "Q1",
+        "start": "2026-12-01T08:00",
+        "end": "2026-12-01T09:30"
+      },
+      {
+        "person": "Q2",
+        "start": "2026-12-01T09:30",
+        "end": "2026-12-01T11:00"
+      }
+    ],
+    "absences": [],
+    "tokens": [],
+    "witnesses": [],
+    "resume_orders": []
+  }
+]

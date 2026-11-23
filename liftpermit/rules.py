@@ -1,20 +1,22 @@
 """Integrate independently runnable plan, resource, and site decisions."""
 from __future__ import annotations
 
-from . import plans, resources, work
+from . import handoff_capture, plans, resources, work
 
 
 def calculate(events):
     plan_events = [e for e in events if e["kind"] == "plan"]
     asset_events = [e for e in events if e["kind"] == "asset"]
     work_events = [e for e in events if e["kind"] == "work"]
+    handoff_events = [e for e in events if e["kind"] == "handoff"]
     p = plans.evaluate(plan_events)
-    a = resources.evaluate(asset_events, p)
+    h = handoff_capture.evaluate(handoff_events, p)
+    a = resources.evaluate(asset_events, p, h)
     w = work.evaluate(work_events, p, a)
     decisions, states = {}, []
     for subsystem, accounts in [
         ("吊装方案账", p), ("设备与人员资格账", a),
-        ("现场许可与作业账", w)
+        ("现场许可与作业账", w), ("值守交接账", h)
     ]:
         for job, account in accounts.items():
             event = account["event"]
@@ -31,7 +33,7 @@ def calculate(events):
 
 def business_records(event):
     subsystem = {"plan": "吊装方案账", "asset": "设备与人员资格账",
-                 "work": "现场许可与作业账"}[event["kind"]]
+                 "work": "现场许可与作业账", "handoff": "值守交接账"}[event["kind"]]
     base = event["id"]
     records = []
 
@@ -61,6 +63,17 @@ def business_records(event):
         })
         for i, item in enumerate(event.get("competing_reservations", [])):
             add("塔机预留", f"{base}:reservation:{i}", item)
+    elif event["kind"] == "handoff":
+        for i, item in enumerate(event.get("swipes", [])):
+            add("刷卡采录", f"{base}:swipe:{i}", item)
+        for i, item in enumerate(event.get("roster", [])):
+            add("值守班次", f"{base}:roster:{i}", item)
+        for i, item in enumerate(event.get("tokens", [])):
+            add("交接令牌", f"{base}:token:{i}", item)
+        for i, item in enumerate(event.get("witnesses", [])):
+            add("监理视频索引", f"{base}:video:{i}", item)
+        for i, item in enumerate(event.get("resume_orders", [])):
+            add("复工令", f"{base}:resume:{i}", item)
     else:
         add("作业许可", f"{base}:permit", {"job_id": event["job_id"],
                                       "actions": event.get("permit_actions", [])})
